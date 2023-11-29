@@ -13,9 +13,8 @@
 #include "IoTTimer.h"
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
-SYSTEM_THREAD(ENABLED);
 DFRobotDFPlayerMini myDFPlayer;
-Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+Adafruit_VL53L0X lox1 = Adafruit_VL53L0X();
 Adafruit_VL53L0X lox2 = Adafruit_VL53L0X();
 Adafruit_VL53L0X lox3 = Adafruit_VL53L0X();
 
@@ -29,13 +28,15 @@ IoTTimer handTimer3;
 int handLoc;
 bool pausePlay;
 
-
-int LOX2_ADDRESS = 0x30;
-int LOX3_ADDRESS = 0x31;
+int LOX1_ADDRESS = 0x30;
+int LOX2_ADDRESS = 0x31;
+int LOX3_ADDRESS = 0x32;
 int SHT_LOX1 = D5;
 int SHT_LOX2 = D6;
 int SHT_LOX3 = D7;
-
+VL53L0X_RangingMeasurementData_t measure1;
+VL53L0X_RangingMeasurementData_t measure2;
+VL53L0X_RangingMeasurementData_t measure3;
 
 
 
@@ -57,7 +58,7 @@ void setID() {
   digitalWrite(SHT_LOX3, LOW);
 
   delay(10);
-  if (!lox.begin()) {
+  if (!lox1.begin(LOX1_ADDRESS)) {
     Serial.println(F("Failed to boot VL53L0X"));
     while(1);
   }
@@ -95,13 +96,15 @@ void setup() {
   
   pinMode(SHT_LOX1, OUTPUT);
   pinMode(SHT_LOX2, OUTPUT);
+  pinMode(SHT_LOX3, OUTPUT);
 
   Serial.println("Shutdown pins inited...");
 
   digitalWrite(SHT_LOX1, LOW);
   digitalWrite(SHT_LOX2, LOW);
+  digitalWrite(SHT_LOX3, LOW);
 
-  Serial.println("Both in reset mode...(pins are low)");
+  Serial.println("Both in reset mode...(all 3 are low)");
   
   
   Serial.println("Starting...");
@@ -123,10 +126,11 @@ void setup() {
 
 void loop() {
   handLoc = wheresHand();
-  if(handLoc){
+  Serial.printf("Hand Position: %i\n",handLoc);
+  /* if(handLoc){
     musicMode(handLoc);
     
-  }
+  } */
 }
 
 void musicMode(int handPos){
@@ -196,23 +200,56 @@ void musicMode(int handPos){
 }
 
 int wheresHand(){
-  VL53L0X_RangingMeasurementData_t measure;
   int handPos;  
  
-  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+  lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
 
-  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
-    if(measure.RangeMilliMeter <= 100){
+  if (measure1.RangeStatus != 4) {  // phase failures have incorrect data
+    if(measure1.RangeMilliMeter <= 100){
+      handPos = 7;
+    }
+    else if(measure1.RangeMilliMeter >100 && measure1.RangeMilliMeter <=200){
+      handPos = 4;
+    }
+    else if(measure1.RangeMilliMeter >200 && measure1.RangeMilliMeter <=320){
       handPos = 1;
     }
-    else if(measure.RangeMilliMeter >100 && measure.RangeMilliMeter <=200){
+  } else {
+    handPos = 0;
+  } 
+if(handPos == 0 ){
+  lox2.rangingTest(&measure2, false); // pass in 'true' to get debug data printout!
+
+  if (measure2.RangeStatus != 4) {  // phase failures have incorrect data
+    if(measure2.RangeMilliMeter <= 100){
+      handPos = 8;
+    }
+    else if(measure2.RangeMilliMeter >100 && measure2.RangeMilliMeter <=200){
+      handPos = 5;
+    }
+    else if(measure2.RangeMilliMeter >200 && measure2.RangeMilliMeter <=320){
       handPos = 2;
     }
-    else if(measure.RangeMilliMeter >200 && measure.RangeMilliMeter <=320){
+  } else {
+    handPos = 0;
+  } 
+}
+if(handPos == 0){
+  lox3.rangingTest(&measure3, false); // pass in 'true' to get debug data printout!
+
+  if (measure3.RangeStatus != 4) {  // phase failures have incorrect data
+    if(measure3.RangeMilliMeter <= 100){
+      handPos = 9;
+    }
+    else if(measure3.RangeMilliMeter >100 && measure3.RangeMilliMeter <=200){
+      handPos = 6;
+    }
+    else if(measure3.RangeMilliMeter >200 && measure3.RangeMilliMeter <=320){
       handPos = 3;
     }
   } else {
     handPos = 0;
   } 
-  return handPos;
+}
+return handPos;
 }
