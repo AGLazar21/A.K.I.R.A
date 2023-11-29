@@ -8,64 +8,71 @@
 
 // Include Particle Device OS APIs
 #include "Particle.h"
-#include <Keypad_Particle.h>
+#include "DFRobotDFPlayerMini.h"
+#include "Adafruit_VL53L0X.h"
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 SYSTEM_THREAD(ENABLED);
-
-
-const byte ROWS = 4;
-const byte COLS = 4;
-char hexaKeys[ROWS][COLS] = {
-  {'1','2','3','A'},
-  {'4','5','6','B'},
-  {'7','8','9','C'},
-  {'*','0','#','D'},
-};
-byte colPins[COLS] = {D17,D14,D13,D12};
-byte rowPins[ROWS] = {D16,D5,D17,D18};
-Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
-int handPos;
+DFRobotDFPlayerMini myDFPlayer;
+Adafruit_VL53L0X lox = Adafruit_VL53L0X();
 int wheresHand();
-
+void musicMode(int handPos);
+int handLoc;
+bool pausePlay;
 
 void setup() {
-  Serial.begin();
+  Serial.begin(9600);
+  Serial1.begin(9600);
   waitFor(Serial.isConnected,10000);
 
 
+  while (! Serial) {
+    delay(1);
+  }
+  
+  Serial.println("Adafruit VL53L0X test");
+  if (!lox.begin()) {
+    Serial.println(F("Failed to boot VL53L0X"));
+    while(1);
+  }
 
 
+ if (!myDFPlayer.begin(Serial1)) {  //Use softwareSerial to communicate with mp3.
+    Serial.println(F("Unable to begin:"));
+    Serial.println(F("1.Please recheck the connection!"));
+    Serial.println(F("2.Please insert the SD card!"));
+    while(true);
+  }
+  Serial.println(F("DFPlayer Mini online."));
+  
+  myDFPlayer.play(1);  //Play the first mp3
 
-
-
-  /* myDFPlayer.play(1);  //Play the first mp3 */
 }
 
 
 void loop() {
-  handPos = wheresHand();
-  Serial.printf("Hand Position:%i\n",handPos);
+  handLoc = wheresHand();
+  if(handLoc){
+    musicMode(handLoc);
+    Serial.printf("Hand Position:%i\n",handLoc);
+  }
 }
 
-int wheresHand(){
- int handPos = customKeypad.getKey();
- 
- return handPos;
-}
-
-/* void musicMode(int handPos){
+void musicMode(int handPos){
+  static int timer;
+  myDFPlayer.volume(20); 
   switch(handPos){
-    case 2:
+    case 3:
       myDFPlayer.volumeUp();
+      Serial,printf("Vol:%i",myDFPlayer.volume());
       break;
-    case 4:
+    /* case 4:
       myDFPlayer.previuos();
-      break;
-    case 5:
+      break; */
+    case 2:
       pausePlay = !pausePlay;
       timer=-9999999;
-      if (onOff ==1) {
+      if (pausePlay ==1) {
         if (millis() - timer > 60000) {
           timer = millis();
           myDFPlayer.next();  //Play next mp3 every 3 second.
@@ -75,11 +82,34 @@ int wheresHand(){
         myDFPlayer.pause();
       }
       break;
-    case 6:
+   /*  case 6:
       myDFPlayer.next();
-      break;
-    case 8:
+      break; */
+    case 1:
       myDFPlayer.volumeDown();
+      Serial,printf("Vol:%i",myDFPlayer.volume());
       break;
   }
-} */
+}
+
+int wheresHand(){
+  VL53L0X_RangingMeasurementData_t measure;
+  int handPos;  
+ 
+  lox.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+
+  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
+    if(measure.RangeMilliMeter <= 100){
+      handPos = 1;
+    }
+    else if(measure.RangeMilliMeter >100 && measure.RangeMilliMeter <=200){
+      handPos = 2;
+    }
+    else if(measure.RangeMilliMeter <310){
+      handPos = 3;
+    }
+  } else {
+    handPos = 0;
+  } 
+  return handPos;
+}
