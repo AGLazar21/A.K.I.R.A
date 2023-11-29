@@ -10,13 +10,19 @@
 #include "Particle.h"
 #include "DFRobotDFPlayerMini.h"
 #include "Adafruit_VL53L0X.h"
+#include "IoTTimer.h"
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 SYSTEM_THREAD(ENABLED);
 DFRobotDFPlayerMini myDFPlayer;
 Adafruit_VL53L0X lox = Adafruit_VL53L0X();
+
 int wheresHand();
 void musicMode(int handPos);
+
+IoTTimer handTimer1;
+IoTTimer handTimer2;
+IoTTimer handTimer3;
 int handLoc;
 bool pausePlay;
 
@@ -46,7 +52,7 @@ void setup() {
   Serial.println(F("DFPlayer Mini online."));
   
   myDFPlayer.play(1);  //Play the first mp3
-
+  myDFPlayer.volume(15); 
 }
 
 
@@ -54,40 +60,67 @@ void loop() {
   handLoc = wheresHand();
   if(handLoc){
     musicMode(handLoc);
-    Serial.printf("Hand Position:%i\n",handLoc);
+    
   }
 }
 
 void musicMode(int handPos){
-  static int timer;
-  myDFPlayer.volume(20); 
+  static int timer, curVol;
+  static int prevHandPos;
+  timer=-9999999;
+  
   switch(handPos){
     case 3:
-      myDFPlayer.volumeUp();
-      Serial,printf("Vol:%i",myDFPlayer.volume());
+      if(handPos != prevHandPos){
+        handTimer3.startTimer(1000);
+      }
+      if(handTimer3.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.volumeUp();
+        handTimer3.startTimer(500);
+        curVol = myDFPlayer.readVolume();
+        Serial.printf("Vol:%i",curVol);
+      }
+      prevHandPos = handPos;
       break;
     /* case 4:
       myDFPlayer.previuos();
       break; */
     case 2:
-      pausePlay = !pausePlay;
-      timer=-9999999;
-      if (pausePlay ==1) {
-        if (millis() - timer > 60000) {
-          timer = millis();
-          myDFPlayer.next();  //Play next mp3 every 3 second.
+      if(handPos != prevHandPos){
+        handTimer2.startTimer(1000);
+      }
+      if(handTimer2.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        pausePlay = !pausePlay;
+        if (pausePlay ==1) {
+          if (millis() - timer > 60000) {
+            timer = millis();
+            myDFPlayer.next();  //Play next mp3 every 3 second.
+          }
+        }
+        else{
+          myDFPlayer.pause();
         }
       }
-      else{
-        myDFPlayer.pause();
-      }
+      prevHandPos = handPos;
       break;
    /*  case 6:
       myDFPlayer.next();
       break; */
     case 1:
-      myDFPlayer.volumeDown();
-      Serial,printf("Vol:%i",myDFPlayer.volume());
+      if(handPos != prevHandPos){
+        handTimer1.startTimer(1000);
+      }
+      if(handTimer1.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.volumeDown();
+        handTimer1.startTimer(500);
+        curVol = myDFPlayer.readVolume();
+        Serial.printf("Vol:%i",curVol);
+      }
+      prevHandPos = handPos;
+      
       break;
   }
 }
