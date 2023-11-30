@@ -14,13 +14,14 @@
 #include "Colors.h"
 #include <neopixel.h>
 #include "hue.h"
+#include "Button.h"
 SYSTEM_MODE(MANUAL);
 
-
+Button Button(D19);
 
 const int BULB=4; 
 
-const int PIXELCOUNT = 3;
+const int PIXELCOUNT = 4;
 Adafruit_NeoPixel pixel(PIXELCOUNT,SPI1,WS2812B);
 void pixelFill(int pixelNum, int pixColor);
 
@@ -38,8 +39,8 @@ void lightMode(int handPos);
 
 IoTTimer handTimer;
 
-int handLoc;
-bool pausePlay, onOff;
+static int handLoc, curMode;
+bool pausePlay;
 
 int LOX1_ADDRESS = 0x30;
 int LOX2_ADDRESS = 0x31;
@@ -140,7 +141,7 @@ void setup() {
   }
   Serial.println(F("DFPlayer Mini online."));
   
- // myDFPlayer.randomAll();;  //Play the first mp3
+  myDFPlayer.randomAll();  //Play the first mp3
   pausePlay = 1;
   myDFPlayer.volume(15); 
 
@@ -149,8 +150,7 @@ void setup() {
   pixel.setBrightness(30);
   pixel.show();
 
-  onOff = 0;
-
+  curMode = 0;
 
 
 }
@@ -158,12 +158,34 @@ void setup() {
 
 void loop() {
   handLoc = wheresHand();
-  if(handLoc){
-    //musicMode(handLoc);
-    lightMode(handLoc);
+  if(Button.isClicked()){
+    curMode = (curMode+1)%4;
+    Serial.printf("Mode: %i\n",curMode);
   }
-}
-
+  switch(curMode){
+    case 0:
+    pixelFill(3,black);
+      break;
+    case 1:
+    pixelFill(3,blue);
+    if(handLoc){
+      musicMode(handLoc);
+    }
+      break;
+    case 2:
+    pixelFill(3,orange);
+    if(handLoc){
+      lightMode(handLoc);
+    }
+      break;
+    case 3:
+    pixelFill(3,purple);
+    if(handLoc){
+      //tempMode();
+    }
+      break;
+  }
+} 
 void musicMode(int handPos){
  static int curVol; //,curState;
   static int prevHandPos;
@@ -207,7 +229,7 @@ void musicMode(int handPos){
       if(handTimer.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
         myDFPlayer.volumeUp();
-        handTimer.startTimer(500);
+        handTimer.startTimer(1000);
         curVol = myDFPlayer.readVolume();
         Serial.printf("Vol:%i",curVol);
       }
@@ -221,7 +243,7 @@ void musicMode(int handPos){
       if(handTimer.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
         myDFPlayer.previous();
-        handTimer.startTimer(500);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -252,7 +274,7 @@ void musicMode(int handPos){
       if(handTimer.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
         myDFPlayer.next();
-        handTimer.startTimer(500);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -264,7 +286,7 @@ void musicMode(int handPos){
       if(handTimer.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
         myDFPlayer.volumeDown();
-        handTimer.startTimer(500);
+        handTimer.startTimer(1000);
         curVol = myDFPlayer.readVolume();
         Serial.printf("Vol:%i",curVol);
       }
@@ -277,7 +299,7 @@ void musicMode(int handPos){
 
 void lightMode(int handPos){
   static int prevHandPos, hueBrit=125, hueColor;
-  setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+  static bool onOff = 0;
   switch(handPos){
     case 0:
       prevHandPos =0;
@@ -287,8 +309,10 @@ void lightMode(int handPos){
         handTimer.startTimer(1000);
       }
       if(handTimer.isTimerReady()){
-        hueBrit = hueBrit+15;
-        handTimer.startTimer(500);
+        hueBrit = hueBrit+25;
+        setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+        Serial.printf("Hand Position: %i\n",handPos);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -301,7 +325,9 @@ void lightMode(int handPos){
         if(hueColor>0){
           hueColor = hueColor-1;
         }
-        handTimer.startTimer(500);
+        setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+        Serial.printf("Hand Position: %i\n",handPos);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -311,8 +337,10 @@ void lightMode(int handPos){
         handTimer.startTimer(1000);
       }
       if(handTimer.isTimerReady()){
-        handTimer.startTimer(1000);
         onOff = !onOff;  
+        setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+        Serial.printf("Hand Position: %i\n",handPos);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -322,10 +350,10 @@ void lightMode(int handPos){
         handTimer.startTimer(1000);
       }
       if(handTimer.isTimerReady()){
-        if(hueColor<7){
           hueColor = hueColor+1;
-        }
-        handTimer.startTimer(500);
+          setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+          Serial.printf("Hand Position: %i\n",handPos);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
@@ -335,8 +363,10 @@ void lightMode(int handPos){
         handTimer.startTimer(1000);
       }
       if(handTimer.isTimerReady()){
-        hueBrit = hueBrit-15;
-        handTimer.startTimer(500);
+        hueBrit = hueBrit-25;
+        setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+        Serial.printf("Hand Position: %i\n",handPos);
+        handTimer.startTimer(1000);
       }
       prevHandPos = handPos;
       break;
