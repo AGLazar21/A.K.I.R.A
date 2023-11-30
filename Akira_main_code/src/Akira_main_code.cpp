@@ -11,7 +11,20 @@
 #include "DFRobotDFPlayerMini.h"
 #include "Adafruit_VL53L0X.h"
 #include "IoTTimer.h"
-SYSTEM_MODE(SEMI_AUTOMATIC);
+#include "Colors.h"
+#include <neopixel.h>
+#include "hue.h"
+SYSTEM_MODE(MANUAL);
+
+
+
+const int BULB=4; 
+
+const int PIXELCOUNT = 3;
+Adafruit_NeoPixel pixel(PIXELCOUNT,SPI1,WS2812B);
+void pixelFill(int pixelNum, int pixColor);
+
+
 
 DFRobotDFPlayerMini myDFPlayer;
 Adafruit_VL53L0X lox1 = Adafruit_VL53L0X();
@@ -21,12 +34,12 @@ Adafruit_VL53L0X lox3 = Adafruit_VL53L0X();
 int wheresHand();
 void setID();
 void musicMode(int handPos);
+void lightMode(int handPos);
 
-IoTTimer handTimer1;
-IoTTimer handTimer2;
-IoTTimer handTimer3;
+IoTTimer handTimer;
+
 int handLoc;
-bool pausePlay;
+bool pausePlay, onOff;
 
 int LOX1_ADDRESS = 0x30;
 int LOX2_ADDRESS = 0x31;
@@ -80,7 +93,7 @@ void setID() {
     Serial.println(F("Failed to boot third VL53L0X"));
     while(1);
   }
-  
+  Serial.printf("All Connected\n");
 }
 
 
@@ -89,6 +102,14 @@ void setup() {
   Serial1.begin(9600);
   waitFor(Serial.isConnected,10000);
 
+  WiFi.on();
+  WiFi.clearCredentials();
+  WiFi.setCredentials("IoTNetwork");
+  WiFi.connect();
+  while(WiFi.connecting()) {
+    Serial.printf(".");
+  }
+  Serial.printf("\n\n");
 
   while (! Serial) {
     delay(1);
@@ -119,77 +140,131 @@ void setup() {
   }
   Serial.println(F("DFPlayer Mini online."));
   
-  myDFPlayer.play(1);  //Play the first mp3
+ // myDFPlayer.randomAll();;  //Play the first mp3
+  pausePlay = 1;
   myDFPlayer.volume(15); 
+
+
+  pixel.begin();
+  pixel.setBrightness(30);
+  pixel.show();
+
+  onOff = 0;
+
+
+
 }
 
 
 void loop() {
   handLoc = wheresHand();
-  Serial.printf("Hand Position: %i\n",handLoc);
-  /* if(handLoc){
-    musicMode(handLoc);
-    
-  } */
+  if(handLoc){
+    //musicMode(handLoc);
+    lightMode(handLoc);
+  }
 }
 
 void musicMode(int handPos){
-  static int timer, curVol;
+ static int curVol; //,curState;
   static int prevHandPos;
-  timer=-9999999;
   
   switch(handPos){
     case 0:
       prevHandPos =0;
       break;
-    case 3:
-      if(handPos != prevHandPos){
+  /*   case 1: 
+     if(handPos != prevHandPos){
         handTimer3.startTimer(1000);
       }
       if(handTimer3.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
-        myDFPlayer.volumeUp();
+        myDFPlayer.pause();
+        curState = myDFPlayer.readState();
+        Serial.printf("Current State: %i\r",curState);
         handTimer3.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 3: 
+     if(handPos != prevHandPos){
+        handTimer3.startTimer(1000);
+      }
+      if(handTimer3.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.start();
+        curState = myDFPlayer.readState();
+        Serial.printf("Current State: %i\r",curState);
+        handTimer3.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+ */
+    case 2:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.volumeUp();
+        handTimer.startTimer(500);
         curVol = myDFPlayer.readVolume();
         Serial.printf("Vol:%i",curVol);
       }
       prevHandPos = handPos;
       break;
-    /* case 4:
-      myDFPlayer.previuos();
-      break; */
-    case 2:
+
+    case 4:
       if(handPos != prevHandPos){
-        handTimer2.startTimer(1000);
+        handTimer.startTimer(1000);
       }
-      if(handTimer2.isTimerReady()){
-        handTimer2.startTimer(500000);
+      if(handTimer.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.previous();
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 5:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        handTimer.startTimer(1000);
         Serial.printf("Hand Position:%i\n",handPos);
         pausePlay = !pausePlay;
         Serial.printf("pausePlay:%i\n",pausePlay);
-        if (pausePlay ==1) {
-          if (millis() - timer > 60000000) {
-            timer = millis();
-            myDFPlayer.next();  //Play next mp3 every 3 second.
-          }
+        if (pausePlay ==1 && myDFPlayer.readState() == 514){
+            myDFPlayer.start();  
         }
-        else{
+        else if(pausePlay == 0 && myDFPlayer.readState() == 513){
           myDFPlayer.pause();
         }
       }
       prevHandPos = handPos;
       break;
-   /*  case 6:
-      myDFPlayer.next();
-      break; */
-    case 1:
+
+    case 6:
       if(handPos != prevHandPos){
-        handTimer1.startTimer(1000);
+        handTimer.startTimer(1000);
       }
-      if(handTimer1.isTimerReady()){
+      if(handTimer.isTimerReady()){
+        Serial.printf("Hand Position:%i\n",handPos);
+        myDFPlayer.next();
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 8:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
         Serial.printf("Hand Position:%i\n",handPos);
         myDFPlayer.volumeDown();
-        handTimer1.startTimer(500);
+        handTimer.startTimer(500);
         curVol = myDFPlayer.readVolume();
         Serial.printf("Vol:%i",curVol);
       }
@@ -199,6 +274,81 @@ void musicMode(int handPos){
   }
 }
 
+
+void lightMode(int handPos){
+  static int prevHandPos, hueBrit=125, hueColor;
+  setHue(BULB,onOff,HueRainbow[hueColor%7],hueBrit,255);
+  switch(handPos){
+    case 0:
+      prevHandPos =0;
+      break;
+    case 2:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        hueBrit = hueBrit+15;
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 4:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        if(hueColor>0){
+          hueColor = hueColor-1;
+        }
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 5:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        handTimer.startTimer(1000);
+        onOff = !onOff;  
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 6:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        if(hueColor<7){
+          hueColor = hueColor+1;
+        }
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 8:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(1000);
+      }
+      if(handTimer.isTimerReady()){
+        hueBrit = hueBrit-15;
+        handTimer.startTimer(500);
+      }
+      prevHandPos = handPos;
+      break;
+  }
+}
+
+
+
+
+
+
+
 int wheresHand(){
   int handPos;  
  
@@ -207,15 +357,19 @@ int wheresHand(){
   if (measure1.RangeStatus != 4) {  // phase failures have incorrect data
     if(measure1.RangeMilliMeter <= 100){
       handPos = 7;
+      pixelFill(0,red);
     }
     else if(measure1.RangeMilliMeter >100 && measure1.RangeMilliMeter <=200){
       handPos = 4;
+      pixelFill(0,white);
     }
     else if(measure1.RangeMilliMeter >200 && measure1.RangeMilliMeter <=320){
       handPos = 1;
+      pixelFill(0,green);
     }
   } else {
     handPos = 0;
+    pixelFill(0,black);
   } 
 if(handPos == 0 ){
   lox2.rangingTest(&measure2, false); // pass in 'true' to get debug data printout!
@@ -223,15 +377,19 @@ if(handPos == 0 ){
   if (measure2.RangeStatus != 4) {  // phase failures have incorrect data
     if(measure2.RangeMilliMeter <= 100){
       handPos = 8;
+      pixelFill(1,red);
     }
     else if(measure2.RangeMilliMeter >100 && measure2.RangeMilliMeter <=200){
       handPos = 5;
+      pixelFill(1,white);
     }
     else if(measure2.RangeMilliMeter >200 && measure2.RangeMilliMeter <=320){
       handPos = 2;
+      pixelFill(1,green);
     }
   } else {
     handPos = 0;
+    pixelFill(1,black);
   } 
 }
 if(handPos == 0){
@@ -240,16 +398,26 @@ if(handPos == 0){
   if (measure3.RangeStatus != 4) {  // phase failures have incorrect data
     if(measure3.RangeMilliMeter <= 100){
       handPos = 9;
+      pixelFill(2,red);
     }
     else if(measure3.RangeMilliMeter >100 && measure3.RangeMilliMeter <=200){
       handPos = 6;
+      pixelFill(2,white);
     }
     else if(measure3.RangeMilliMeter >200 && measure3.RangeMilliMeter <=320){
       handPos = 3;
+      pixelFill(2,green);
     }
   } else {
     handPos = 0;
+    pixelFill(2,black);
   } 
 }
 return handPos;
+}
+
+
+void pixelFill(int pixelNum, int pixColor) {
+  pixel.setPixelColor(pixelNum,pixColor);
+  pixel.show();
 }
