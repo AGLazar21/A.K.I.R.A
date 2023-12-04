@@ -42,6 +42,7 @@ Adafruit_VL53L0X lox3 = Adafruit_VL53L0X();
 
 int wheresHand();
 void setID();
+void freeMode(int handPos);
 void musicMode(int handPos);
 void lightMode(int handPos);
 void tempMode(int handPos);
@@ -61,7 +62,7 @@ int SHT_LOX3 = D7;
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 VL53L0X_RangingMeasurementData_t measure3;
-int max1 = 150,max2 = 300,max3 =450;
+int max1 = 100,max2 = 250,max3 =450;
 
 
 
@@ -201,31 +202,72 @@ void modeSwitch(int handLocation, int currrentMode){
   switch(curMode){
     case 0:
       pixelFill(3,black);
+      if(handLoc){
+        freeMode(handLoc);
+      }
     break;
     case 1:
       pixelFill(3,blue);
       if(handLoc){
-       musicMode(handLoc);
+        musicMode(handLoc);
       }
     break;
     case 2:
       pixelFill(3,orange);
       if(handLoc){
-      lightMode(handLoc);
+        lightMode(handLoc);
       }
     break;
     case 3:
       pixelFill(3,purple);
       if(handLoc){
-      tempMode(handLoc);
+        tempMode(handLoc);
       }
     break;
   }
 }
+
+void freeMode(int handPos){
+  static int prevHandPos;
+  switch(handPos){
+     case 1:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(3000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode-1);
+        if(curMode == -1){
+          curMode = 3;
+        }
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
+    case 3:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(3000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode+1)%4;
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
+  }
+}
+
 void musicMode(int handPos){
  static int curVol; //,curState;
   static int prevHandPos;
-  Serial.printf("Hand Position:%i\n",handPos);
+  //Serial.printf("Hand Position:%i\n",handPos);
   switch(handPos){
     case 0:
       handTimer.startTimer(500);
@@ -235,34 +277,25 @@ void musicMode(int handPos){
       display.display();
       prevHandPos =0;
     break;
-  /*   case 1: 
-     if(handPos != prevHandPos){
-        handTimer3.startTimer(1000);
-      }
-      if(handTimer3.isTimerReady()){
-        Serial.printf("Hand Position:%i\n",handPos);
-        myDFPlayer.pause();
-        curState = myDFPlayer.readState();
-        Serial.printf("Current State: %i\r",curState);
-        handTimer3.startTimer(500);
-      }
-      prevHandPos = handPos;
-      break;
 
-    case 3: 
-     if(handPos != prevHandPos){
-        handTimer3.startTimer(1000);
+    case 1:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
       }
-      if(handTimer3.isTimerReady()){
-        Serial.printf("Hand Position:%i\n",handPos);
-        myDFPlayer.start();
-        curState = myDFPlayer.readState();
-        Serial.printf("Current State: %i\r",curState);
-        handTimer3.startTimer(500);
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode-1);
+        if(curMode == -1){
+          curMode = 3;
+        }
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
       }
       prevHandPos = handPos;
-      break;
- */
+    break;
+
     case 2:
       if(handPos != prevHandPos){
         handTimer.startTimer(1000);
@@ -278,7 +311,22 @@ void musicMode(int handPos){
         display.display();
       }
       prevHandPos = handPos;
-      break;
+    break;
+
+    case 3:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode+1)%4;
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
 
     case 4:
       if(handPos != prevHandPos){
@@ -294,7 +342,7 @@ void musicMode(int handPos){
         handTimer.startTimer(2000);
       }
       prevHandPos = handPos;
-      break;
+    break;
 
     case 5:
       if(handPos != prevHandPos){
@@ -319,7 +367,7 @@ void musicMode(int handPos){
         }
       }
       prevHandPos = handPos;
-      break;
+    break;
 
     case 6:
       if(handPos != prevHandPos){
@@ -335,7 +383,7 @@ void musicMode(int handPos){
         handTimer.startTimer(2000);
       }
       prevHandPos = handPos;
-      break;
+    break;
 
     case 8:
       if(handPos != prevHandPos){
@@ -353,7 +401,7 @@ void musicMode(int handPos){
       }
       prevHandPos = handPos;
       
-      break;
+    break;
   }
 }
 
@@ -361,7 +409,7 @@ void musicMode(int handPos){
 void lightMode(int handPos){
   static int prevHandPos, hueBrit=125, hueColor;
   static bool onOff = 0;
-  Serial.printf("Hand Position:%i\n",handPos);
+  //Serial.printf("Hand Position:%i\n",handPos);
   switch(handPos){
     case 0:
       display.clearDisplay();
@@ -373,6 +421,25 @@ void lightMode(int handPos){
       display.display();
       prevHandPos =0;
       break;
+
+
+    case 1:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode-1);
+        if(curMode == -1){
+          curMode = 3;
+        }
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
 
     case 2:
       if(handPos != prevHandPos){
@@ -389,6 +456,21 @@ void lightMode(int handPos){
         handTimer.startTimer(500);
         display.setCursor(28,28);
         display.printf("Brightness:%i",hueBrit);
+        display.display();
+      }
+      prevHandPos = handPos;
+      break;
+
+    case 3:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode+1)%4;
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
       prevHandPos = handPos;
@@ -478,7 +560,7 @@ void lightMode(int handPos){
 void tempMode(int handPos){
   static int prevHandPos, desiredTemp = 68;
   int tempC, tempF;
-  Serial.printf("Hand Position:%i\n",handPos);
+  //Serial.printf("Hand Position:%i\n",handPos);
   tempC = bme.readTemperature();
   tempF = map(tempC,0,85,32,185);
   switch(handPos){
@@ -491,7 +573,25 @@ void tempMode(int handPos){
         display.printf("Desired Temp:%i",desiredTemp);
         display.display();
       prevHandPos =0;
-      break;
+    break;
+
+    case 1:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode-1);
+        if(curMode == -1){
+          curMode = 3;
+        }
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
 
     case 2:
       if(handPos != prevHandPos){
@@ -511,7 +611,22 @@ void tempMode(int handPos){
         display.display();
       }
       prevHandPos = handPos;
-      break;
+    break;
+
+    case 3:
+      if(handPos != prevHandPos){
+        handTimer.startTimer(2000);
+      }
+      if(handTimer.isTimerReady()){
+        display.clearDisplay();
+        curMode = (curMode+1)%4;
+        handTimer.startTimer(2000);
+        display.setCursor(28,28);
+        display.printf("%s",modeName[curMode].c_str());
+        display.display();
+      }
+      prevHandPos = handPos;
+    break;
 
     case 5:
       if(handPos != prevHandPos){
@@ -541,7 +656,7 @@ void tempMode(int handPos){
         display.display();
       }
       prevHandPos = handPos;
-      break;
+    break;
   }
 }
 
