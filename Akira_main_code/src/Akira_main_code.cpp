@@ -8,6 +8,10 @@
 
 // Include Particle Device OS APIs
 #include "Particle.h"
+#include <Adafruit_MQTT.h>
+#include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
+#include "Adafruit_MQTT/Adafruit_MQTT.h"
+#include "credentials.h"
 #include "DFRobotDFPlayerMini.h"
 #include "Adafruit_VL53L0X.h"
 #include "Adafruit_SSD1306.h"
@@ -47,6 +51,7 @@ void musicMode(int handPos);
 void lightMode(int handPos);
 void tempMode(int handPos);
 void modeSwitch(int handLocation, int currrentMode);
+void MQTT_connect();
 
 IoTTimer handTimer;
 
@@ -64,7 +69,10 @@ VL53L0X_RangingMeasurementData_t measure2;
 VL53L0X_RangingMeasurementData_t measure3;
 int max1 = 100,max2 = 250,max3 =450;
 
-
+TCPClient TheClient; 
+Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
+Adafruit_MQTT_Subscribe volSubFeed = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/volumefeed"); 
+Adafruit_MQTT_Publish volPubFeed = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/volumefeed");
 
 void setID() {
   // all reset
@@ -118,11 +126,14 @@ void setup() {
   WiFi.on();
   WiFi.clearCredentials();
   WiFi.setCredentials("IoTNetwork");
+  //WiFi.setCredentials("DDCIOT","ddcIOT2020");
   WiFi.connect();
   while(WiFi.connecting()) {
     Serial.printf(".");
   }
   Serial.printf("\n\n");
+
+  mqtt.subscribe(&volSubFeed);
 
   while (! Serial) {
     delay(1);
@@ -183,6 +194,7 @@ void setup() {
 
 
 void loop() {
+  //MQTT_connect();
   handLoc = wheresHand();
   if(buttonL.isClicked()){
     curMode = (curMode-1);
@@ -265,7 +277,7 @@ void freeMode(int handPos){
 }
 
 void musicMode(int handPos){
- static int curVol; //,curState;
+ static int curVol, lastVol; //,curState;
   static int prevHandPos;
   //Serial.printf("Hand Position:%i\n",handPos);
   switch(handPos){
@@ -309,6 +321,7 @@ void musicMode(int handPos){
         display.setCursor(39,28);
         display.printf("Volume:%i",curVol);
         display.display();
+        lastVol = curVol;
       }
       prevHandPos = handPos;
     break;
@@ -398,13 +411,30 @@ void musicMode(int handPos){
         display.setCursor(39,28);
         display.printf("Volume:%i",curVol);
         display.display();
+        lastVol = curVol;
       }
       prevHandPos = handPos;
       
     break;
   }
-}
+  Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(100))) {
+    if (subscription == &volSubFeed) {
+      curVol = atoi((char *)volSubFeed.lastread);
+      volPubFeed.publish(curVol);
+      myDFPlayer.volume(curVol);
+      myDFPlayer.volumeDown();
+      myDFPlayer.volumeUp();
+      lastVol = curVol;
+    }
+  }
 
+  if((curVol != lastVol)) {
+    if(mqtt.Update()) {
+      volPubFeed.publish(curVol);
+    }
+  }
+}
 
 void lightMode(int handPos){
   static int prevHandPos, hueBrit=125, hueColor;
@@ -735,4 +765,23 @@ return handPos;
 void pixelFill(int pixelNum, int pixColor) {
   pixel.setPixelColor(pixelNum,pixColor);
   pixel.show();
+}
+
+void MQTT_connect() {
+  int8_t ret;
+ 
+  // Return if already connected.
+  if (mqtt.connected()) {
+    return;
+  }
+ 
+  Serial.print("Connecting to MQTT... ");
+ 
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.printf("Error Code %s\n",mqtt.connectErrorString(ret));
+       Serial.printf("Retrying MQTT connection in 5 seconds...\n");
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds and try again
+  }
+  Serial.printf("MQTT Connected!\n");
 }
