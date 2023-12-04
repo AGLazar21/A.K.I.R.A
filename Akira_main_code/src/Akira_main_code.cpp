@@ -19,10 +19,11 @@
 #include "Button.h"
 SYSTEM_MODE(MANUAL);
 
-Button Button(D19);
-
+Button buttonR(D19);
+Button buttonL(D18);
 const int BULB=4; 
 String colorName[10] = {"Red   ","Orange","Yellow","Green ","Blue  ","Indigo","Violet"};
+String modeName[10] = {"Free Mode ","Music Mode","Light Mode","Temp Mode "};
 
 const int PIXELCOUNT = 4;
 Adafruit_NeoPixel pixel(PIXELCOUNT,SPI1,WS2812B);
@@ -44,6 +45,7 @@ void setID();
 void musicMode(int handPos);
 void lightMode(int handPos);
 void tempMode(int handPos);
+void modeSwitch(int handLocation, int currrentMode);
 
 IoTTimer handTimer;
 
@@ -181,47 +183,58 @@ void setup() {
 
 void loop() {
   handLoc = wheresHand();
-  if(Button.isClicked()){
-    curMode = (curMode+1)%4;
-    Serial.printf("Mode: %i\n",curMode);
+  if(buttonL.isClicked()){
+    curMode = (curMode-1);
+    if(curMode == -1){
+      curMode = 3;
+    }
+    Serial.printf("%s\n",modeName[curMode].c_str());
   }
+  if(buttonR.isClicked()){
+    curMode = (curMode+1)%4;
+    Serial.printf("%s\n",modeName[curMode].c_str());
+  }
+  modeSwitch(handLoc,curMode);
+} 
+
+void modeSwitch(int handLocation, int currrentMode){
   switch(curMode){
     case 0:
-    pixelFill(3,black);
-      break;
+      pixelFill(3,black);
+    break;
     case 1:
-    pixelFill(3,blue);
-    if(handLoc){
-      musicMode(handLoc);
-    }
-      break;
+      pixelFill(3,blue);
+      if(handLoc){
+       musicMode(handLoc);
+      }
+    break;
     case 2:
-    pixelFill(3,orange);
-    if(handLoc){
+      pixelFill(3,orange);
+      if(handLoc){
       lightMode(handLoc);
-    }
-      break;
+      }
+    break;
     case 3:
-    pixelFill(3,purple);
-    if(handLoc){
+      pixelFill(3,purple);
+      if(handLoc){
       tempMode(handLoc);
-    }
-      break;
+      }
+    break;
   }
-} 
+}
 void musicMode(int handPos){
  static int curVol; //,curState;
   static int prevHandPos;
   Serial.printf("Hand Position:%i\n",handPos);
   switch(handPos){
     case 0:
-        display.clearDisplay();      
-        handTimer.startTimer(500);
-        display.setCursor(39,28);
-        display.printf("Volume:%i",curVol);
-        display.display();
+      handTimer.startTimer(500);
+      display.clearDisplay();         
+      display.setCursor(39,28);
+      display.printf("Volume:%i",curVol);
+      display.display();
       prevHandPos =0;
-      break;
+    break;
   /*   case 1: 
      if(handPos != prevHandPos){
         handTimer3.startTimer(1000);
@@ -539,8 +552,9 @@ int wheresHand(){
   int handPos;  
  
   lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
-
+  handPos=0;
   if (measure1.RangeStatus != 4) {  // phase failures have incorrect data
+ // Serial.printf("Measure range:%i\n",measure1.RangeStatus);
     if(measure1.RangeMilliMeter >10 && measure1.RangeMilliMeter <= max1){
       handPos = 7;
       pixelFill(0,red);
