@@ -25,13 +25,13 @@ SYSTEM_MODE(MANUAL);
 
 Button buttonR(D19);
 Button buttonL(D18);
-const int BULB=4; 
+const int BULB=6; 
 String colorName[10] = {"Red   ","Orange","Yellow","Green ","Blue  ","Indigo","Violet"};
 String modeName[10] = {"Free Mode ","Music Mode","Light Mode","Temp Mode "};
 
-const int PIXELCOUNT = 4;
+const int PIXELCOUNT = 9;
 Adafruit_NeoPixel pixel(PIXELCOUNT,SPI1,WS2812B);
-void pixelFill(int pixelNum, int pixColor);
+void pixelFill(int startPixel, int pixelNum, int pixColor);
 
 const int OLED_RESET = -1;
 Adafruit_SSD1306 display(OLED_RESET);
@@ -67,7 +67,7 @@ int SHT_LOX3 = D7;
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 VL53L0X_RangingMeasurementData_t measure3;
-int max1 = 100,max2 = 250,max3 =450;
+int max1 = 120,max2 = 280,max3 =460;
 
 TCPClient TheClient; 
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
@@ -168,7 +168,7 @@ void setup() {
   myDFPlayer.randomAll();
   myDFPlayer.pause();
   pausePlay = 0;
-  myDFPlayer.volume(15); 
+  myDFPlayer.volume(22); 
 
 
   pixel.begin();
@@ -197,15 +197,21 @@ void loop() {
   //MQTT_connect();
   handLoc = wheresHand();
   if(buttonL.isClicked()){
+    display.clearDisplay();
     curMode = (curMode-1);
     if(curMode == -1){
       curMode = 3;
     }
-    Serial.printf("%s\n",modeName[curMode].c_str());
+    display.setCursor(34,28);
+    display.printf("%s",modeName[curMode].c_str());
+    display.display();
   }
   if(buttonR.isClicked()){
+    display.clearDisplay();
     curMode = (curMode+1)%4;
-    Serial.printf("%s\n",modeName[curMode].c_str());
+    display.setCursor(34,28);
+    display.printf("%s",modeName[curMode].c_str());
+    display.display();
   }
   modeSwitch(handLoc,curMode);
 } 
@@ -213,25 +219,25 @@ void loop() {
 void modeSwitch(int handLocation, int currrentMode){
   switch(curMode){
     case 0:
-      pixelFill(3,black);
+     // pixelFill(0,8,black);
       if(handLoc){
         freeMode(handLoc);
       }
     break;
     case 1:
-      pixelFill(3,blue);
+      //pixelFill(,blue);
       if(handLoc){
         musicMode(handLoc);
       }
     break;
     case 2:
-      pixelFill(3,orange);
+      //pixelFill(0,8,orange);
       if(handLoc){
         lightMode(handLoc);
       }
     break;
     case 3:
-      pixelFill(3,purple);
+      //pixelFill(3,purple);
       if(handLoc){
         tempMode(handLoc);
       }
@@ -253,7 +259,7 @@ void freeMode(int handPos){
           curMode = 3;
         }
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -267,7 +273,7 @@ void freeMode(int handPos){
         display.clearDisplay();
         curMode = (curMode+1)%4;
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -301,7 +307,7 @@ void musicMode(int handPos){
           curMode = 3;
         }
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -334,7 +340,7 @@ void musicMode(int handPos){
         display.clearDisplay();
         curMode = (curMode+1)%4;
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -362,7 +368,7 @@ void musicMode(int handPos){
         handTimer.startTimer(1000);
       }
       if(handTimer.isTimerReady()){
-        handTimer.startTimer(3000);
+        handTimer.startTimer(1000);
         //Serial.printf("Hand Position:%i\n",handPos);
         display.clearDisplay();
         pausePlay = !pausePlay;
@@ -464,7 +470,7 @@ void lightMode(int handPos){
           curMode = 3;
         }
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -499,7 +505,7 @@ void lightMode(int handPos){
         display.clearDisplay();
         curMode = (curMode+1)%4;
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -616,7 +622,7 @@ void tempMode(int handPos){
           curMode = 3;
         }
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -651,7 +657,7 @@ void tempMode(int handPos){
         display.clearDisplay();
         curMode = (curMode+1)%4;
         handTimer.startTimer(2000);
-        display.setCursor(28,28);
+        display.setCursor(34,28);
         display.printf("%s",modeName[curMode].c_str());
         display.display();
       }
@@ -702,19 +708,19 @@ int wheresHand(){
  // Serial.printf("Measure range:%i\n",measure1.RangeStatus);
     if(measure1.RangeMilliMeter >10 && measure1.RangeMilliMeter <= max1){
       handPos = 7;
-      pixelFill(0,red);
+      pixelFill(0,2,red);
     }
     else if(measure1.RangeMilliMeter >max1 && measure1.RangeMilliMeter <=max2){
       handPos = 4;
-      pixelFill(0,white);
+      pixelFill(0,2,white);
     }
     else if(measure1.RangeMilliMeter >max2 && measure1.RangeMilliMeter <=max3){
       handPos = 1;
-      pixelFill(0,green);
+      pixelFill(0,2,green);
     }
   } else {
     handPos = 0;
-    pixelFill(0,black);
+    pixelFill(0,2,black);
   } 
 if(handPos == 0 ){
   lox2.rangingTest(&measure2, false); // pass in 'true' to get debug data printout!
@@ -722,19 +728,19 @@ if(handPos == 0 ){
   if (measure2.RangeStatus != 4) {  // phase failures have incorrect data
     if(measure2.RangeMilliMeter >10 && measure2.RangeMilliMeter <= max1){
       handPos = 8;
-      pixelFill(1,red);
+      pixelFill(3,5,red);
     }
     else if(measure2.RangeMilliMeter >max1 && measure2.RangeMilliMeter <=max2){
       handPos = 5;
-      pixelFill(1,white);
+      pixelFill(3,5,white);
     }
     else if(measure2.RangeMilliMeter >max2 && measure2.RangeMilliMeter <=max3){
       handPos = 2;
-      pixelFill(1,green);
+      pixelFill(3,5,green);
     }
   } else {
     handPos = 0;
-    pixelFill(1,black);
+    pixelFill(3,5,black);
   } 
 }
 if(handPos == 0){
@@ -743,28 +749,31 @@ if(handPos == 0){
   if (measure3.RangeStatus != 4) {  // phase failures have incorrect data
     if(measure3.RangeMilliMeter >10 && measure3.RangeMilliMeter <= max1){
       handPos = 9;
-      pixelFill(2,red);
+      pixelFill(6,8,red);
     }
     else if(measure3.RangeMilliMeter >max1 && measure3.RangeMilliMeter <=max2){
       handPos = 6;
-      pixelFill(2,white);
+      pixelFill(6,8,white);
     }
     else if(measure3.RangeMilliMeter >max2 && measure3.RangeMilliMeter <=max3){
       handPos = 3;
-      pixelFill(2,green);
+      pixelFill(6,8,green);
     }
   } else {
     handPos = 0;
-    pixelFill(2,black);
+    pixelFill(6,8,black);
   } 
 }
 return handPos;
 }
 
 
-void pixelFill(int pixelNum, int pixColor) {
-  pixel.setPixelColor(pixelNum,pixColor);
+void pixelFill(int startPixel, int pixelNum, int pixColor) {
+  int i;
+  for(i=startPixel;i<=pixelNum;i++){
+  pixel.setPixelColor(i,pixColor);
   pixel.show();
+  }
 }
 
 void MQTT_connect() {
