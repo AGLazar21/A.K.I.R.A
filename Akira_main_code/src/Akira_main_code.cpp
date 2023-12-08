@@ -23,11 +23,12 @@
 #include "Button.h"
 SYSTEM_MODE(MANUAL);
 
-Button buttonR(D19);
+Button buttonR(D19); //touch sensors 
 Button buttonL(D18);
+
 const int BULB=6; 
 String colorName[10] = {"Red   ","Orange","Yellow","Green ","Blue  ","Indigo","Violet"};
-String modeName[10] = {"Free Mode ","Music Mode","Light Mode","Temp Mode "};
+String modeName[10] = {"Free Mode ","Music Mode","Light Mode","Temp Mode "}; 
 
 const int PIXELCOUNT = 9;
 Adafruit_NeoPixel pixel(PIXELCOUNT,SPI1,WS2812B);
@@ -67,14 +68,14 @@ int SHT_LOX3 = D7;
 VL53L0X_RangingMeasurementData_t measure1;
 VL53L0X_RangingMeasurementData_t measure2;
 VL53L0X_RangingMeasurementData_t measure3;
-int max1 = 120,max2 = 280,max3 =460;
+int max1 = 120,max2 = 230,max3 =370;
 
 TCPClient TheClient; 
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
 Adafruit_MQTT_Subscribe volSubFeed = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/volumefeed"); 
 Adafruit_MQTT_Publish volPubFeed = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/volumefeed");
 
-void setID() {
+void setID() {  //sets new address for each TOF sensor
   // all reset
   digitalWrite(SHT_LOX1, LOW);    
   digitalWrite(SHT_LOX2, LOW);
@@ -195,7 +196,7 @@ void setup() {
 
 void loop() {
   //MQTT_connect();
-  handLoc = wheresHand();
+  handLoc = wheresHand(); 
   if(buttonL.isClicked()){
     display.clearDisplay();
     curMode = (curMode-1);
@@ -216,7 +217,7 @@ void loop() {
   modeSwitch(handLoc,curMode);
 } 
 
-void modeSwitch(int handLocation, int currrentMode){
+void modeSwitch(int handLocation, int currrentMode){  // selects the mode 
   switch(curMode){
     case 0:
      // pixelFill(0,8,black);
@@ -245,7 +246,7 @@ void modeSwitch(int handLocation, int currrentMode){
   }
 }
 
-void freeMode(int handPos){
+void freeMode(int handPos){  // allows user to get used to the thresholds and operation 
   static int prevHandPos;
   switch(handPos){
      case 1:
@@ -282,7 +283,7 @@ void freeMode(int handPos){
   }
 }
 
-void musicMode(int handPos){
+void musicMode(int handPos){ // controls local MP3. player
  static int curVol, lastVol; //,curState;
   static int prevHandPos;
   //Serial.printf("Hand Position:%i\n",handPos);
@@ -442,7 +443,7 @@ void musicMode(int handPos){
   }
 }
 
-void lightMode(int handPos){
+void lightMode(int handPos){ // controls Hue bulb light
   static int prevHandPos, hueBrit=125, hueColor;
   static bool onOff = 0;
   //Serial.printf("Hand Position:%i\n",handPos);
@@ -593,7 +594,7 @@ void lightMode(int handPos){
 }
 
 
-void tempMode(int handPos){
+void tempMode(int handPos){ // allows for climate control 
   static int prevHandPos, desiredTemp = 68;
   int tempC, tempF;
   //Serial.printf("Hand Position:%i\n",handPos);
@@ -699,13 +700,14 @@ void tempMode(int handPos){
 
 
 
-int wheresHand(){
+int wheresHand(){ // uses TOF to see which threshold is active 
   int handPos;  
  
   lox1.rangingTest(&measure1, false); // pass in 'true' to get debug data printout!
   handPos=0;
   if (measure1.RangeStatus != 4) {  // phase failures have incorrect data
  // Serial.printf("Measure range:%i\n",measure1.RangeStatus);
+  pixelFill(3,5,black);
     if(measure1.RangeMilliMeter >10 && measure1.RangeMilliMeter <= max1){
       handPos = 7;
       pixelFill(0,2,red);
@@ -724,8 +726,8 @@ int wheresHand(){
   } 
 if(handPos == 0 ){
   lox2.rangingTest(&measure2, false); // pass in 'true' to get debug data printout!
-
   if (measure2.RangeStatus != 4) {  // phase failures have incorrect data
+  pixelFill(6,8,black);
     if(measure2.RangeMilliMeter >10 && measure2.RangeMilliMeter <= max1){
       handPos = 8;
       pixelFill(3,5,red);
